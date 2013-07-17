@@ -5,7 +5,7 @@ Create an animation using the canvas element.
 Rules
 - All animation should be within the canvas element only
 - Using 3rd party JavaScript libraries are okay
-- Work should be orignal, please don't just follow a tutorial with minor edits
+- Work should be original, please don't just follow a tutorial with minor edits
 - Have FUN!
 
 Judging Criteria
@@ -13,6 +13,9 @@ Judging Criteria
 - JavaScript is clean and easy to read.  Tip: Code for the reader.
 - Code is commented where appropriate. Tip: Explain the WHY not the HOW.
 - Readable code is preferred over commented code. Tip: Use easy to understand naming conventions.
+- Creativity
+- Originality
+- User Experience
 
 How to Submit
 - In the rodeo-1 folder create a new folder with your username
