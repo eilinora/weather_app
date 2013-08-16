@@ -135,25 +135,40 @@
     OpenWeatherApi: {
       URI: 'http://api.openweathermap.org/data/2.5/',
       WEATHER_SERVICE: 'weather',
-
+      
       DEFAULT_LOCATION: {
         lat: 40.69847032728747,
         lon: -73.9514422416687
       },
 
+      api_options: {
+        APPID: '5f3d226a945f78937bb9db3433d57ae0',
+        unit: 'imperial'
+      },
+
+
       init: function () {
+        this.setup_requester();
         this.get_weather_condition_by_latlong();
       },
 
+      setup_requester: function () {
+        this.ajax_request = new rodeo.models.API_Caller();
+        this.ajax_request.addEventListener('ajax:success', _.bind(this.on_success, this));
+        this.ajax_request.addEventListener('ajax:error', _.bind(this.on_error, this));
+      },
+
+      append_api_options: function (params) {
+        return _.extend( this.api_options, params);
+      },
+
       get_weather_condition_by_latlong: function (pos) {
+        var params;
         if (pos === undefined) pos = this.DEFAULT_LOCATION;
-        var ajax_request = new rodeo.models.API_Caller();
-        ajax_request.addEventListener('ajax:success', _.bind(this.on_success, this));
-        ajax_request.addEventListener('ajax:error', _.bind(this.on_error, this));
-        ajax_request.send_request(this.URI + this.WEATHER_SERVICE, pos, {
-          method: 'GET'
-        });
-        
+        //append any default data need for api call to params
+        params = this.append_api_options(pos);
+        //make the request
+        this.ajax_request.send_request(this.URI + this.WEATHER_SERVICE, pos);
       },
 
       get_weather_condition_by_name: function (city_name) {
@@ -161,7 +176,7 @@
       },
 
       on_success: function (data) {
-
+        console.log(data);
       },
 
       on_error: function (data) {
@@ -171,7 +186,6 @@
     },
 
     LocationServices: {
-
       request_location: function () {
         var dfd = new $.Deferred(),
             verified = false,
@@ -238,22 +252,26 @@
     }
   };
 
+  
   rodeo.models.API_Caller = function () { };
+  //adding event dispatcher functionality from CreateJS to object
   createjs.EventDispatcher.initialize(rodeo.models.API_Caller.prototype);
   _.extend(rodeo.models.API_Caller.prototype, {
     send_request: function (URL, params, options) {
       var defaults = {
-        method: 'POST',
-        dataType: 'json',
+        method: 'GET',
+        dataType: 'jsonp',
         cache: false,
         on_success: false,
         on_error: false,
         scope: this,
         async: true
-      };
+      },
 
       //Get our opts
-      var opts = _.extend(defaults, options);
+      opts = (options !== undefined) ? _.extend(defaults, options) : defaults;
+
+      //perform request
       return $.ajax( {
         type: opts.method,
         dataType: opts.dataType,
@@ -262,34 +280,29 @@
         data : params,
         async: opts.async,
         success: _.bind( function( data ) {
-          console.log('Success!', data);
-          if( data.form_errors && opts.on_error ) {
+          
+          if( data.form_errors ) {
             //opts.on_error.call(opts.scope, data);
             this.dispatchEvent('ajax:error', data);
             return;
           }
           //Success callback
-          if( opts.on_success ) {
-            this.dispatchEvent('ajax:success', data);
-            //opts.on_success.call(opts.scope, data);
-          }
+          //console.log('Success!', data); //debugging
+          this.dispatchEvent('ajax:success', data);
+          //opts.on_success.call(opts.scope, data);
         }, this ),
 
         error: _.bind( function( data ) {
           console.log('ERROR: ', data);
           //Error callback
-          if( opts.on_error ) {
-            this.dispatchEvent('ajax:error', data);
-            //opts.on_error.call(opts.scope, data);
-          }
+          this.dispatchEvent('ajax:error', data);
+          //opts.on_error.call(opts.scope, data);
         }, this ),
         fail: _.bind( function( data ) {
           console.log('FAIL: ', data);
           //Error callback
-          if( opts.on_error ) {
-            this.dispatchEvent('ajax:error', data);
-            //opts.on_error.call(opts.scope, data);
-          }
+          this.dispatchEvent('ajax:error', data);
+          //opts.on_error.call(opts.scope, data);
         }, this )
       } );
     }
@@ -305,7 +318,11 @@
   //
   //-------------------------
   rodeo.utils = {
-  
+    Temp: {
+      convert_kelvin_to_fahrenheit: function (temp) {
+        return ((temp - 273) * 1.8 ) + 32;
+      }
+    }
   };
   //-------------------------
   //
