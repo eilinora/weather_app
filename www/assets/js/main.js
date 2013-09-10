@@ -43,17 +43,23 @@
      */
     var initialize = function () {
       //adds global listeners used by the site
-      var add_listeners = function() {
+      var addListeners = function() {
           var that = this;
           $(window).on('resize', _.debounce( function( e ) {
             //do something
           }, 125 ) );
         }, //end: addListeners
 
-        get_user_location = function () {
-          rodeo.models.LocationServices.request_location().done ( function (data) {
+        getUserLocation = function () {
+          rodeo.models.LocationServices.requestLocation().done ( function (data) {
             console.log (data);
           });
+        },
+
+        getStage = function () {
+          this.stage = new createjs.Stage('app');
+          console.log(this.stage);
+          return this.stage;
         },
 
         on_resize = function () {
@@ -67,7 +73,7 @@
           
           init: function () {
             //add app listeners
-            add_listeners();
+            addListeners();
             rodeo.models.OpenWeatherApi.init();
           }
 
@@ -92,7 +98,7 @@
 
   //-------------------------
   //
-  // BEGIN: Utilities
+  // BEGIN: Models
   //
   //-------------------------
   rodeo.models = {
@@ -141,52 +147,52 @@
         lon: -73.9514422416687
       },
 
-      api_options: {
+      apiOptions: {
         APPID: '5f3d226a945f78937bb9db3433d57ae0',
         unit: 'imperial'
       },
 
 
       init: function () {
-        this.setup_requester();
-        this.get_weather_condition_by_latlong();
+        this.setupRequester();
+        this.getWeatherConditionByLatLong();
       },
 
-      setup_requester: function () {
-        this.ajax_request = new rodeo.models.API_Caller();
-        this.ajax_request.addEventListener('ajax:success', _.bind(this.on_success, this));
-        this.ajax_request.addEventListener('ajax:error', _.bind(this.on_error, this));
+      setupRequester: function () {
+        this.ajaxRequest = new rodeo.models.APICaller();
+        this.ajaxRequest.addEventListener('ajax:success', _.bind(this.onSuccess, this));
+        this.ajaxRequest.addEventListener('ajax:error', _.bind(this.onError, this));
       },
 
-      append_api_options: function (params) {
-        return _.extend( this.api_options, params);
+      appendApiOptions: function (params) {
+        return _.extend( this.apiOptions, params);
       },
 
-      get_weather_condition_by_latlong: function (pos) {
+      getWeatherConditionByLatLong: function (pos) {
         var params;
         if (pos === undefined) pos = this.DEFAULT_LOCATION;
         //append any default data need for api call to params
-        params = this.append_api_options(pos);
+        params = this.appendApiOptions(pos);
         //make the request
-        this.ajax_request.send_request(this.URI + this.WEATHER_SERVICE, pos);
+        this.ajaxRequest.sendRequest(this.URI + this.WEATHER_SERVICE, pos);
       },
 
-      get_weather_condition_by_name: function (city_name) {
+      getWeatherConditionByName: function (city_name) {
 
       },
 
-      on_success: function (data) {
+      onSuccess: function (data) {
         console.log(data);
       },
 
-      on_error: function (data) {
+      onError: function (data) {
 
       }
 
     },
 
     LocationServices: {
-      request_location: function () {
+      requestLocation: function () {
         var dfd = new $.Deferred(),
             verified = false,
             timeout = 5000;
@@ -204,12 +210,12 @@
               navigator.geolocation.clearWatch( watchID );
               console.log('GEO coming from config browser/device: ',geodata);
               //
-              if ( !config.user_data ) config.user_data = {};
-              if ( config.user_data && !config.user_data.geolocation ) {
-                _.extend( config.user_data, geodata );
+              if ( !config.userData ) config.userData = {};
+              if ( config.userData && !config.userData.geolocation ) {
+                _.extend( config.userData, geodata );
               }
               //
-              dfd.resolve( [ config.user_data.geolocation[ 0 ], config.user_data.geolocation[ 1 ] ] );
+              dfd.resolve( [ config.userData.geolocation[ 0 ], config.userData.geolocation[ 1 ] ] );
             }, this),
             _.bind(function(error){
               clearInterval(timeoutInterval);
@@ -222,9 +228,9 @@
           //if so, cycle through back up scenraios for getting location
           var timeoutInterval = setTimeout( _.bind(function() {
             navigator.geolocation.clearWatch( watchID );
-            if ( !config.user_data ) {
-              if (config.user_data.geolocation) {
-                dfd.resolve( config.user_data.geolocation );
+            if ( !config.userData ) {
+              if (config.userData.geolocation) {
+                dfd.resolve( config.userData.geolocation );
               }
             } else {
               console.log('ERROR: No location retrieved');
@@ -253,11 +259,11 @@
   };
 
   
-  rodeo.models.API_Caller = function () { };
+  rodeo.models.APICaller = function () { };
   //adding event dispatcher functionality from CreateJS to object
-  createjs.EventDispatcher.initialize(rodeo.models.API_Caller.prototype);
-  _.extend(rodeo.models.API_Caller.prototype, {
-    send_request: function (URL, params, options) {
+  createjs.EventDispatcher.initialize(rodeo.models.APICaller.prototype);
+  _.extend(rodeo.models.APICaller.prototype, {
+    sendRequest: function (URL, params, options) {
       var defaults = {
         method: 'GET',
         dataType: 'jsonp',
@@ -306,12 +312,45 @@
         }, this )
       } );
     }
-  });//end: API_CALLER
+  });//end: APICaller
   //-------------------------
   //
-  // END: Utilities
+  // END: Models
   //
   //-------------------------
+
+  //-------------------------
+  //
+  // BEGIN: Views
+  //
+  //-------------------------
+  rodeo.views = {};
+  rodeo.views.Condition = function () {
+
+  };
+  $.extend (rodeo.views.Condition.prototype, {
+
+  });
+
+  /*rodeo.views.Main = function () {
+    
+  };
+  $.extend (rodeo.views.Main.prototype, {
+    stage : null,
+    
+    setupDisplay: function () {
+      this.stage = new createjs.Stage('app');
+      console.log(this.stage);
+    }
+  });
+*/
+
+  //-------------------------
+  //
+  // END: Views
+  //
+  //-------------------------
+  //
   //-------------------------
   //
   // BEGIN: Utilities
