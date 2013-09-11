@@ -31,17 +31,21 @@
    * Creates the application controller which handles and
    * page routing to code packages or utility calls
    */
-  rodeo.ApplicationController  = (function () {
+  rodeo.Main  = (function () {
     /**
      * Stores instance of our AppController
      */
     var instance;
-
     /**
      * Stores all private methods to the AppRouter so that no other
      * @return {Object} Returns any public methods being exposed
      */
     var initialize = function () {
+      /**
+       * reference to the canvas stage
+       */
+      var stage;
+
       //adds global listeners used by the site
       var addListeners = function() {
           var that = this;
@@ -50,20 +54,14 @@
           }, 125 ) );
         }, //end: addListeners
 
-        getUserLocation = function () {
-          rodeo.models.LocationServices.requestLocation().done ( function (data) {
-            console.log (data);
-          });
-        },
 
-        getStage = function () {
-          this.stage = new createjs.Stage('app');
-          console.log(this.stage);
-          return this.stage;
+        setStage = function () {
+          stage = new createjs.Stage('app');
         },
 
         on_resize = function () {
-          //do something
+          rodeo.getStage().width = $.$body.width();
+          rodeo.getStage().height = $.$body.height();
         }; //end: on_resize
 
         /**
@@ -75,7 +73,21 @@
             //add app listeners
             addListeners();
             rodeo.models.OpenWeatherApi.init();
+          },
+
+          getStage: function () {
+            if (stage === undefined) {
+              setStage();
+            }
+            return stage;
+          },
+
+          getUserLocation: function () {
+            rodeo.models.LocationServices.requestLocation().done ( function (data) {
+              console.log (data);
+            });
           }
+
 
         };
     }; //end: initialize
@@ -326,10 +338,33 @@
   //-------------------------
   rodeo.views = {};
   rodeo.views.Condition = function () {
-
+    this.makeItRain();
   };
   $.extend (rodeo.views.Condition.prototype, {
+    makeItRain: function () {
+      var stage = rodeo.Main.getInstance().getStage();
+      
+      rain = new createjs.Shape();
+      rain.graphics.beginStroke('rgba(0,0,255,0.85)').beginFill('rgba(0,0,255,0.25)');
+      rain.graphics.moveTo(0, 0).lineTo(-10, 16).quadraticCurveTo(-16, 30, 0,32)
+                   .moveTo(0,0).lineTo(10, 16).quadraticCurveTo(16, 30, 0,32);
+      rain.x = 50;
+      rain.y = 50;
+      rain.compositeOperation = "overlay";
+      stage.addChild(rain);
 
+      stage.update();
+    },
+
+    drawRainDrop: function (size) {
+      var drop = new createjs.Shape();
+
+      drop.graphics.beginStroke('rgba(0,0,255,0.5)').beginFill('rgba(0,0,255,0.25)');
+      drop.graphics.moveTo(0, 0).lineTo(-10, 16).quadraticCurveTo(-16, 30, 0,32)
+                   .moveTo(0,0).lineTo(10, 16).quadraticCurveTo(16, 30, 0,32);
+
+      return drop;
+    }
   });
 
   /*rodeo.views.Main = function () {
@@ -374,7 +409,8 @@
    * @return {Void}
    */
   (function () {
-    rodeo.ApplicationController.getInstance().init();
+    rodeo.Main.getInstance().init();
+    new rodeo.views.Condition();
   })();
 
 }(jQuery, this));
