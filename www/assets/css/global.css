@@ -5,8 +5,7 @@ body {
   height:100%;
   min-width:768px;
 }
-
-body {
+canvas {
   margin:0;
   padding:0;
 }

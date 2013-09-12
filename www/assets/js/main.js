@@ -16,6 +16,7 @@
   var config = {};
   //caching $body to be used throughout the script
   $.$body = $('body');
+  $.$window = $(window);
   $.support.geolocation = ('geolocation' in navigator ) && ( _.isFunction( navigator.geolocation.getCurrentPosition ) );
   $.support.localStorage = ('localStorage' in window ) && ( _.isFunction( localStorage.setItem ) );
   $.support.touch = 'ontouchstart' in window;
@@ -44,24 +45,47 @@
       /**
        * reference to the canvas stage
        */
-      var stage;
+      var stage, stageWidth, stageHeight,
+          sky,
+          CANVAS = 'app',
+          $canvas = $('#'+CANVAS);
+
+
 
       //adds global listeners used by the site
       var addListeners = function() {
-          var that = this;
-          $(window).on('resize', _.debounce( function( e ) {
-            //do something
-          }, 125 ) );
+          $(window).on('resize', _.bind( onResize, this) );
         }, //end: addListeners
 
-
         setStage = function () {
-          stage = new createjs.Stage('app');
+          stage = new createjs.Stage(CANVAS);
+          //
+          //seting up framerate for canvas obj
+          createjs.Ticker.setFPS(20);
+          createjs.Ticker.addEventListener('tick', tick);
         },
 
-        on_resize = function () {
-          rodeo.getStage().width = $.$body.width();
-          rodeo.getStage().height = $.$body.height();
+        tick = function () {
+          stage.update();
+
+          rodeo.views.Conditions.updateFallingItems();
+        },
+
+        createSky = function () {
+          sky = new rodeo.views.Sky();
+          sky.createDaytime();
+        }
+
+        onResize = function () {
+          var ct = $canvas.get(0).getContext('2d');
+          $canvas.attr('width', $.$window.width());
+          $canvas.attr('height', $.$window.height());
+          
+          stageWidth = $.$body.width();
+          stageHeight = $.$body.height();
+          stage.update();
+
+          console.log('resize');
         }; //end: on_resize
 
         /**
@@ -70,10 +94,28 @@
         return {
           
           init: function () {
+            setStage(); //TODO:why can i use getStage() in private functions??
+
             //add app listeners
             addListeners();
+
+            //do an initial resize call to set stage props
+            onResize();
+
+            //start the weather...
+            this.setupDefaultCondition();
+
+            //init weather app
             rodeo.models.OpenWeatherApi.init();
           },
+
+          setupDefaultCondition: function () {
+            //rodeo.views.Conditions.setupFallingItems();
+            rodeo.views.Conditions.updateFallingItems();
+
+            createSky();
+          },
+
 
           getStage: function () {
             if (stage === undefined) {
@@ -81,6 +123,14 @@
             }
             return stage;
           },
+
+          getStageWidth: function () {
+            return stageWidth;
+          },
+          getStageHeight: function () {
+            return stageHeight;
+          },
+
 
           getUserLocation: function () {
             rodeo.models.LocationServices.requestLocation().done ( function (data) {
@@ -337,48 +387,105 @@
   //
   //-------------------------
   rodeo.views = {};
-  rodeo.views.Condition = function () {
-    this.makeItRain();
-  };
-  $.extend (rodeo.views.Condition.prototype, {
-    makeItRain: function () {
-      var stage = rodeo.Main.getInstance().getStage();
-      
-      rain = new createjs.Shape();
-      rain.graphics.beginStroke('rgba(0,0,255,0.85)').beginFill('rgba(0,0,255,0.25)');
-      rain.graphics.moveTo(0, 0).lineTo(-10, 16).quadraticCurveTo(-16, 30, 0,32)
-                   .moveTo(0,0).lineTo(10, 16).quadraticCurveTo(16, 30, 0,32);
-      rain.x = 50;
-      rain.y = 50;
-      rain.compositeOperation = "overlay";
-      stage.addChild(rain);
+  rodeo.views.Sky = function () {};
+  $.extend(rodeo.views.Sky.prototype, {
+    current : null,
+    next : null,
 
-      stage.update();
+    setupDisplay: function () {
+      this.createDaytime();
     },
 
-    drawRainDrop: function (size) {
-      var drop = new createjs.Shape();
+    createDaytime: function () {
+      var sky = new createjs.Shape(),
+          stageWidth = rodeo.Main.getInstance().getStageWidth(),
+          stageHeight = rodeo.Main.getInstance().getStageHeight();
+      sky.graphics.beginRadialGradientFill(['#ffcc00', '#ffe54c', '#ffff99', '#237acb'], 
+                                           [0, 0.1, 0.14, 1],
+                                           stageWidth, 0, 0, stageWidth, 0, stageWidth*0.75)
+                  .drawRect(0, 0, stageWidth, stageHeight);
 
-      drop.graphics.beginStroke('rgba(0,0,255,0.5)').beginFill('rgba(0,0,255,0.25)');
-      drop.graphics.moveTo(0, 0).lineTo(-10, 16).quadraticCurveTo(-16, 30, 0,32)
-                   .moveTo(0,0).lineTo(10, 16).quadraticCurveTo(16, 30, 0,32);
+      var stage = rodeo.Main.getInstance().getStage();
+      stage.addChild(sky);
+    },
 
-      return drop;
+    createNightTime: function () {
+
     }
   });
 
-  /*rodeo.views.Main = function () {
+
+  rodeo.views.Conditions = {
+
+    /*setupFallingItems: function (intensity, wind, type) {
+      var drop, tY,
+          stage = rodeo.Main.getInstance().getStage(),
+          stageWidth = rodeo.Main.getInstance().getStageWidth(),
+          stageHeight = rodeo.Main.getInstance().getStageHeight(),
+          i = 0,
+          ani = 0,
+          speed = 20,
+          q = (intensity === undefined) ? 500 : intensity,
+          a = (wind === undefined) ? 10 : wind;
+      type = (type === undefined) ? 'rain' : type;
+
+      for (i = 0; i < q; i++) {
+        //generates a random y position for element
+        tY = Math.random() * stageHeight;
+        ani = (stageHeight-tY)/stageHeight * speed;
+        switch (type) {
+          case 'snow':
+            break;
+          default:
+            drop = rodeo.utils.Draw.rainDrop(Math.random()*10+5);
+        }
+        drop.x = Math.random() * stageWidth;
+        drop.y = tY;
+        stage.addChild(drop);
+
+        TweenLite.to(drop, ani, { y : stageHeight, ease: "linear"});
+      }
+
+    },*/
+
+    updateFallingItems: function (intensity, wind, type) {
+      var drop, tY, w,
+          maxWidth = 20,
+          stage = rodeo.Main.getInstance().getStage(),
+          stageWidth = rodeo.Main.getInstance().getStageWidth(),
+          stageHeight = rodeo.Main.getInstance().getStageHeight()+40,
+          i = 0,
+          ani = 0,
+          speed = 15,
+          q = (intensity === undefined) ? 5 : intensity,
+          a = (wind === undefined) ? 10 : wind;
+        type = (type === undefined) ? 'rain' : type;
+
+        for (i = 0; i < q; i++) {
+          //generates a random y position for element
+          //tY = Math.random() * stageHeight;
+          w = Math.random()*maxWidth+2;
+          ani = (maxWidth-w)/maxWidth * speed;
+          switch (type) {
+            case 'snow':
+              drop = rodeo.utils.Draw.rainDrop(w);
+              break;
+            default:
+              drop = rodeo.utils.Draw.snowFlake(w);
+              
+          }
+          drop.x = Math.random() * stageWidth;
+          drop.y = -20;
+          stage.addChild(drop);
+
+          TweenLite.to(drop, ani, { y : stageHeight, ease: 'linear', onComplete: function () {
+            stage.removeChild(drop);
+          }});
+      }
+    }
     
   };
-  $.extend (rodeo.views.Main.prototype, {
-    stage : null,
-    
-    setupDisplay: function () {
-      this.stage = new createjs.Stage('app');
-      console.log(this.stage);
-    }
-  });
-*/
+
 
   //-------------------------
   //
@@ -396,6 +503,36 @@
       convert_kelvin_to_fahrenheit: function (temp) {
         return ((temp - 273) * 1.8 ) + 32;
       }
+    },
+
+    Draw: {
+      cloud: function (s) {
+        if (this.svgFlake === undefined) {
+          this.svgFlake = new Image();
+          this.svgFlake.src = '/assets/svg/cloud.svg';
+        }
+        var flake = new createjs.Bitmap(this.svgFlake);
+        return flake;
+      },
+
+      snowFlake: function (s) {
+        var flake = new createjs.Shape();
+        flake.graphics.beginStroke('white').beginFill('rgba(255,255,255,0.75)');
+        flake.graphics.drawPolyStar(0, 0, s, 8, 0.65, -100);
+        return flake;
+      },
+
+      rainDrop: function (s) {
+        var drop = new createjs.Shape(),
+            m = s/2,
+            t = s/3;
+
+        drop.graphics.beginStroke('rgba(0,0,255,0.5)').beginFill('rgba(0,0,255,0.25)');
+        drop.graphics.moveTo(0, 0).lineTo(-t, m).quadraticCurveTo(-m, s, 0, s)
+                     .moveTo(0,0).lineTo(t, m).quadraticCurveTo(m, s, 0,s);
+
+        return drop;
+      }
     }
   };
   //-------------------------
@@ -410,7 +547,6 @@
    */
   (function () {
     rodeo.Main.getInstance().init();
-    new rodeo.views.Condition();
   })();
 
 }(jQuery, this));
