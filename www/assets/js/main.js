@@ -47,6 +47,7 @@
        */
       var stage, stageWidth, stageHeight,
           sky,
+          condition,
           CANVAS = 'app',
           $canvas = $('#'+CANVAS);
 
@@ -68,7 +69,7 @@
         tick = function () {
           stage.update();
 
-          rodeo.views.Conditions.updateFallingItems();
+          rodeo.views.conditions.updateFallingItems();
         },
 
         createSky = function () {
@@ -94,7 +95,7 @@
         return {
           
           init: function () {
-            setStage(); //TODO:why can i use getStage() in private functions??
+            setStage(); //TODO:why can't i use getStage() in private functions?? Or better question, what is a good strategy for this issue...
 
             //add app listeners
             addListeners();
@@ -110,8 +111,7 @@
           },
 
           setupDefaultCondition: function () {
-            //rodeo.views.Conditions.setupFallingItems();
-            rodeo.views.Conditions.updateFallingItems();
+            rodeo.views.conditions.updateFallingItems();
 
             createSky();
           },
@@ -158,6 +158,213 @@
     };
   })();
 
+  
+
+  //-------------------------
+  //
+  // BEGIN: Views
+  //
+  //-------------------------
+  rodeo.views = {};
+  rodeo.views.Sky = function () {};
+  $.extend(rodeo.views.Sky.prototype, {
+    current : null,
+    next : null,
+
+    setupDisplay: function () {
+      this.createDaytime();
+    },
+
+    createDaytime: function () {
+      var sky = new createjs.Shape(),
+          stageWidth = rodeo.Main.getInstance().getStageWidth(),
+          stageHeight = rodeo.Main.getInstance().getStageHeight();
+      sky.graphics.beginRadialGradientFill(['#ffcc00', '#ffe54c', '#ffff99', '#237acb'], 
+                                           [0, 0.1, 0.14, 1],
+                                           stageWidth, 0, 0, stageWidth, 0, stageWidth*0.75)
+                  .drawRect(0, 0, stageWidth, stageHeight);
+
+      var stage = rodeo.Main.getInstance().getStage();
+      stage.addChild(sky);
+    },
+
+    createNightTime: function () {
+
+    }
+  });
+
+  rodeo.views.BaseAnimatedElement = function () {};
+  rodeo.views.BaseAnimatedElement.prototype._super = rodeo.views.BaseAnimatedElement.prototype;
+  $.extend(rodeo.views.BaseAnimatedElement.prototype, {
+    el: 0,
+    speed: 0,
+    width: 0,
+    maxSize: 0,
+    speed: 15,
+
+    create: function () {
+      var item = this.draw();
+      item.x = Math.random() * rodeo.Main.getInstance().getStageWidth();
+      item.y = -20;
+      this.setDisplayObject(item);
+      return item;
+    },
+
+    draw: function () {}, //individual item should be drawn in subclass
+
+    animate: function () {},
+
+    add: function () {
+      this.getStage().addChild(this.getDisplayObject());
+    },
+    remove: function () {
+      this.getStage().removeChild(this.getDisplayObject());
+    },
+
+    getAniLength: function () {
+      return (this.getMaxSize()-this.getWidth())/this.getMaxSize() * this.getSpeed();
+    },
+
+    setWidth: function (v) {
+      this.width = v;
+    },
+    getWidth: function () {
+      return this.width;
+    },
+
+    setDisplayObject: function (v) {
+      this.el = v;
+    },
+    getDisplayObject: function() {
+      return this.el;
+    },
+
+    setMaxSize: function (v) {
+      this.maxSize = v;
+    },
+    getMaxSize: function () {
+      return this.maxSize;
+    },
+
+    setSpeed: function (v) {
+      this.speed = v;
+    },
+    getSpeed: function () {
+      return this.speed;
+    },
+
+    getStage: function () {
+      return rodeo.Main.getInstance().getStage();
+    }
+
+  });
+
+  rodeo.views.SnowFlake = function () {
+    this.setSpeed(30);
+    this.setMaxSize(16);
+  };
+  rodeo.views.SnowFlake.prototype = new rodeo.views.BaseAnimatedElement();
+  $.extend(rodeo.views.SnowFlake.prototype, {
+    draw: function () {
+      var flake,
+          s = Math.random()*this.getMaxSize()+2;
+      
+      this.setWidth(s);
+
+      flake = new createjs.Shape();
+      flake.graphics.beginStroke('white').beginFill('rgba(255,255,255,0.75)');
+      flake.graphics.drawPolyStar(0, 0, s, 8, 0.65, -100);
+      flake.cache(-s, -s, s*2, s*2);
+
+      return flake;
+    },
+
+    animate: function () {
+      TweenLite.to(drop, this.getAniLength(), { y : rodeo.Main.getInstance().getStageHeight(), ease: 'linear', onComplete: _.bind(function () {
+        this.remove();
+      }, this) });
+    }
+
+  });
+
+
+  rodeo.views.conditions = {
+    updateFallingItems: function (intensity, wind, type) {
+      var drop, tY, w,
+          maxWidth = 20,
+          stage = rodeo.Main.getInstance().getStage(),
+          stageWidth = rodeo.Main.getInstance().getStageWidth(),
+          stageHeight = rodeo.Main.getInstance().getStageHeight()+40,
+          i = 0,
+          ani = 0,
+          speed = 15,
+          q = (intensity === undefined) ? 5 : intensity,
+          a = (wind === undefined) ? 10 : wind;
+        type = (type === undefined) ? 'rain' : type;
+
+        for (i = 0; i < q; i++) {
+          //generates a random y position for element
+          //tY = Math.random() * stageHeight;
+          w = Math.random()*maxWidth+2;
+          ani = (maxWidth-w)/maxWidth * speed;
+          switch (type) {
+            case 'snow':
+              drop = rodeo.utils.Draw.rainDrop(w);
+              break;
+            default:
+              drop = rodeo.utils.Draw.snowFlake(w);
+              
+          }
+          drop.x = Math.random() * stageWidth;
+          drop.y = -20;
+          stage.addChild(drop);
+
+          TweenLite.to(drop, ani, { y : stageHeight, ease: 'linear', onComplete: function () {
+            stage.removeChild(drop);
+          }});
+      }
+    }
+  };
+
+  rodeo.views.conditions.BaseCondition = function () {};
+  rodeo.views.conditions.BaseCondition.prototype._super = rodeo.views.conditions.BaseCondition.prototype;
+  $.extend(rodeo.views.conditions.BaseCondition.prototype, {
+    scene: null,
+    intensity: 0,
+    wind: 0,
+
+    create: function () {},
+
+    update: function () {
+
+    },
+
+    setScene: function (v) {
+      this.scene = v;
+    },
+    getScene: function () {
+      return this.scene;
+    }
+  });
+
+  rodeo.views.conditions.Raining = function () {};
+  rodeo.views.conditions.Raining.prototype = new rodeo.views.conditions.BaseCondition();
+  $.extend(rodeo.views.conditions.Raining.prototype, {
+
+    makeItRain: function () {
+
+    }
+  });
+
+    
+
+
+  //-------------------------
+  //
+  // END: Views
+  //
+  //-------------------------
+  //
   //-------------------------
   //
   // BEGIN: Models
@@ -378,118 +585,6 @@
   //-------------------------
   //
   // END: Models
-  //
-  //-------------------------
-
-  //-------------------------
-  //
-  // BEGIN: Views
-  //
-  //-------------------------
-  rodeo.views = {};
-  rodeo.views.Sky = function () {};
-  $.extend(rodeo.views.Sky.prototype, {
-    current : null,
-    next : null,
-
-    setupDisplay: function () {
-      this.createDaytime();
-    },
-
-    createDaytime: function () {
-      var sky = new createjs.Shape(),
-          stageWidth = rodeo.Main.getInstance().getStageWidth(),
-          stageHeight = rodeo.Main.getInstance().getStageHeight();
-      sky.graphics.beginRadialGradientFill(['#ffcc00', '#ffe54c', '#ffff99', '#237acb'], 
-                                           [0, 0.1, 0.14, 1],
-                                           stageWidth, 0, 0, stageWidth, 0, stageWidth*0.75)
-                  .drawRect(0, 0, stageWidth, stageHeight);
-
-      var stage = rodeo.Main.getInstance().getStage();
-      stage.addChild(sky);
-    },
-
-    createNightTime: function () {
-
-    }
-  });
-
-
-  rodeo.views.Conditions = {
-
-    /*setupFallingItems: function (intensity, wind, type) {
-      var drop, tY,
-          stage = rodeo.Main.getInstance().getStage(),
-          stageWidth = rodeo.Main.getInstance().getStageWidth(),
-          stageHeight = rodeo.Main.getInstance().getStageHeight(),
-          i = 0,
-          ani = 0,
-          speed = 20,
-          q = (intensity === undefined) ? 500 : intensity,
-          a = (wind === undefined) ? 10 : wind;
-      type = (type === undefined) ? 'rain' : type;
-
-      for (i = 0; i < q; i++) {
-        //generates a random y position for element
-        tY = Math.random() * stageHeight;
-        ani = (stageHeight-tY)/stageHeight * speed;
-        switch (type) {
-          case 'snow':
-            break;
-          default:
-            drop = rodeo.utils.Draw.rainDrop(Math.random()*10+5);
-        }
-        drop.x = Math.random() * stageWidth;
-        drop.y = tY;
-        stage.addChild(drop);
-
-        TweenLite.to(drop, ani, { y : stageHeight, ease: "linear"});
-      }
-
-    },*/
-
-    updateFallingItems: function (intensity, wind, type) {
-      var drop, tY, w,
-          maxWidth = 20,
-          stage = rodeo.Main.getInstance().getStage(),
-          stageWidth = rodeo.Main.getInstance().getStageWidth(),
-          stageHeight = rodeo.Main.getInstance().getStageHeight()+40,
-          i = 0,
-          ani = 0,
-          speed = 15,
-          q = (intensity === undefined) ? 5 : intensity,
-          a = (wind === undefined) ? 10 : wind;
-        type = (type === undefined) ? 'rain' : type;
-
-        for (i = 0; i < q; i++) {
-          //generates a random y position for element
-          //tY = Math.random() * stageHeight;
-          w = Math.random()*maxWidth+2;
-          ani = (maxWidth-w)/maxWidth * speed;
-          switch (type) {
-            case 'snow':
-              drop = rodeo.utils.Draw.rainDrop(w);
-              break;
-            default:
-              drop = rodeo.utils.Draw.snowFlake(w);
-              
-          }
-          drop.x = Math.random() * stageWidth;
-          drop.y = -20;
-          stage.addChild(drop);
-
-          TweenLite.to(drop, ani, { y : stageHeight, ease: 'linear', onComplete: function () {
-            stage.removeChild(drop);
-          }});
-      }
-    }
-    
-  };
-
-
-  //-------------------------
-  //
-  // END: Views
   //
   //-------------------------
   //
