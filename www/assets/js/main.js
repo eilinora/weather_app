@@ -516,10 +516,15 @@
       },
 
       snowFlake: function (s) {
-        var flake = new createjs.Shape();
-        flake.graphics.beginStroke('white').beginFill('rgba(255,255,255,0.75)');
-        flake.graphics.drawPolyStar(0, 0, s, 8, 0.65, -100);
-        return flake;
+        if (this.flake === undefined) {
+          s = 16;
+          this.flake = new createjs.Shape();
+          this.flake.graphics.beginStroke('white').beginFill('rgba(255,255,255,0.75)');
+          this.flake.graphics.drawPolyStar(0, 0, s, 8, 0.65, -100);
+          this.flake.cache(-s, -s, s*2, s*2);
+        }
+
+        return this.flake.clone();
       },
 
       rainDrop: function (s) {
