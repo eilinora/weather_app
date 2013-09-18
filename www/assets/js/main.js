@@ -45,9 +45,10 @@
       /**
        * reference to the canvas stage
        */
-      var stage, stageWidth, stageHeight,
+      var stage, stageWidth = 900, stageHeight = 600,
           sky,
-          condition,
+          condition, $fps,
+          ticker,
           CANVAS = 'app',
           $canvas = $('#'+CANVAS);
 
@@ -55,27 +56,36 @@
 
       //adds global listeners used by the site
       var addListeners = function() {
-          $(window).on('resize', _.bind( onResize, this) );
+          //$(window).on('resize', _.bind( onResize, this) );
         }, //end: addListeners
 
         setStage = function () {
           stage = new createjs.Stage(CANVAS);
+          $fps = $('#fps');
           //
           //seting up framerate for canvas obj
-          createjs.Ticker.setFPS(20);
-          createjs.Ticker.addEventListener('tick', tick);
+          ticker = createjs.Ticker;
+          ticker.setFPS(30);
+          ticker.addEventListener('tick', tick.bind(this));
         },
 
         tick = function () {
           stage.update();
-
-          rodeo.views.conditions.updateFallingItems();
+          $fps.html(Number(ticker.getMeasuredFPS()) + " fps");
+          //rodeo.views.conditions.updateFallingItems();
         },
 
         createSky = function () {
           sky = new rodeo.views.Sky();
-          sky.createDaytime();
-        }
+          sky.setupDisplay();
+          stage.addChild(sky.getScene());
+        },
+
+        createCondition = function () {
+          condition = new rodeo.views.conditions.Raining();//rodeo.views.conditions.Snowing();
+          condition.create();
+          stage.addChild(condition.getScene());
+        },
 
         onResize = function () {
           var ct = $canvas.get(0).getContext('2d');
@@ -101,21 +111,20 @@
             addListeners();
 
             //do an initial resize call to set stage props
-            onResize();
+            //onResize();
+            $canvas.attr('width', $canvas.width());
+            $canvas.attr('height', $canvas.height());
+
+            //create sky
+            createSky();
 
             //start the weather...
-            this.setupDefaultCondition();
+            createCondition();
 
+            
             //init weather app
             rodeo.models.OpenWeatherApi.init();
           },
-
-          setupDefaultCondition: function () {
-            rodeo.views.conditions.updateFallingItems();
-
-            createSky();
-          },
-
 
           getStage: function () {
             if (stage === undefined) {
@@ -172,7 +181,8 @@
     next : null,
 
     setupDisplay: function () {
-      this.createDaytime();
+      this.current = this.createDaytime();
+      return this.current;
     },
 
     createDaytime: function () {
@@ -184,23 +194,29 @@
                                            stageWidth, 0, 0, stageWidth, 0, stageWidth*0.75)
                   .drawRect(0, 0, stageWidth, stageHeight);
 
-      var stage = rodeo.Main.getInstance().getStage();
-      stage.addChild(sky);
+      return sky;
     },
 
     createNightTime: function () {
 
+    },
+
+    getScene: function () {
+      return this.current;
     }
   });
 
   rodeo.views.BaseAnimatedElement = function () {};
+  createjs.EventDispatcher.initialize(rodeo.views.BaseAnimatedElement.prototype);
   rodeo.views.BaseAnimatedElement.prototype._super = rodeo.views.BaseAnimatedElement.prototype;
   $.extend(rodeo.views.BaseAnimatedElement.prototype, {
     el: 0,
     speed: 0,
     width: 0,
+    minSize: 0,
     maxSize: 0,
     speed: 15,
+    easeType: 'linear',
 
     create: function () {
       var item = this.draw();
@@ -212,17 +228,27 @@
 
     draw: function () {}, //individual item should be drawn in subclass
 
-    animate: function () {},
+    animate: function () {
+      TweenLite.to(this.getDisplayObject(), this.getAniLength(), { 
+            y : rodeo.Main.getInstance().getStageHeight(), 
+            ease: this.getEaseType(), 
+            onComplete: _.bind(function () {
+                                this.remove();
+                              }, this) 
+          });
+    },
 
     add: function () {
-      this.getStage().addChild(this.getDisplayObject());
+      this.dispatchEvent('item:add');
     },
     remove: function () {
-      this.getStage().removeChild(this.getDisplayObject());
+      //console.log(this);
+      //console.log('remove');
+      this.dispatchEvent('item:remove');
     },
 
     getAniLength: function () {
-      return (this.getMaxSize()-this.getWidth())/this.getMaxSize() * this.getSpeed();
+      return (((this.getMaxSize() + this.getMinSize()) - this.getWidth())/(this.getMaxSize() + this.getMinSize()) * this.getSpeed()) + 1;
     },
 
     setWidth: function (v) {
@@ -246,11 +272,25 @@
       return this.maxSize;
     },
 
+    setMinSize: function (v) {
+      this.minSize = v;
+    },
+    getMinSize: function () {
+      return this.minSize;
+    },
+
     setSpeed: function (v) {
       this.speed = v;
     },
     getSpeed: function () {
       return this.speed;
+    },
+
+    setEaseType: function (v) {
+      this.easeType = v;
+    },
+    getEaseType: function () {
+      return this.easeType;
     },
 
     getStage: function () {
@@ -261,13 +301,15 @@
 
   rodeo.views.SnowFlake = function () {
     this.setSpeed(30);
-    this.setMaxSize(16);
+    this.setMinSize(2);
+    this.setMaxSize(18);
+    this.setEaseType('linear');
   };
   rodeo.views.SnowFlake.prototype = new rodeo.views.BaseAnimatedElement();
   $.extend(rodeo.views.SnowFlake.prototype, {
     draw: function () {
       var flake,
-          s = Math.random()*this.getMaxSize()+2;
+          s = Math.random()*this.getMaxSize()+this.getMinSize();
       
       this.setWidth(s);
 
@@ -277,16 +319,33 @@
       flake.cache(-s, -s, s*2, s*2);
 
       return flake;
-    },
-
-    animate: function () {
-      TweenLite.to(drop, this.getAniLength(), { y : rodeo.Main.getInstance().getStageHeight(), ease: 'linear', onComplete: _.bind(function () {
-        this.remove();
-      }, this) });
     }
 
   });
 
+  rodeo.views.RainDrop = function () {
+    this.setSpeed(8);
+    this.setMaxSize(16);
+    this.setMinSize(4);
+  };
+  rodeo.views.RainDrop.prototype = new rodeo.views.BaseAnimatedElement();
+  $.extend(rodeo.views.RainDrop.prototype, {
+    draw: function () {
+      var drop = new createjs.Shape(),
+          s = Math.random()*this.getMaxSize()+this.getMinSize(),
+          m = s/2,
+          t = s/3;
+      this.setWidth(s);
+      
+      drop.graphics.beginStroke('rgba(0,0,255,0.5)').beginFill('rgba(0,0,255,0.25)');
+      drop.graphics.moveTo(0, 0).lineTo(-t, m).quadraticCurveTo(-m, s, 0, s)
+                   .moveTo(0,0).lineTo(t, m).quadraticCurveTo(m, s, 0,s);
+      drop.cache(-s, -s, s*2, s*2);
+
+      return drop;
+    }
+
+  });
 
   rodeo.views.conditions = {
     updateFallingItems: function (intensity, wind, type) {
@@ -327,16 +386,45 @@
   };
 
   rodeo.views.conditions.BaseCondition = function () {};
+  //createjs.EventDispatcher.initialize(rodeo.views.conditions.BaseCondition.prototype);
   rodeo.views.conditions.BaseCondition.prototype._super = rodeo.views.conditions.BaseCondition.prototype;
   $.extend(rodeo.views.conditions.BaseCondition.prototype, {
     scene: null,
     intensity: 0,
     wind: 0,
 
-    create: function () {},
+    create: function () {
+      var scene = new createjs.MovieClip();
+      this.setScene(scene);
+      this.setupAnimation();
+    },
 
-    update: function () {
+    setupAnimation: function() {
+      setInterval(_.bind(this.updateScene, this), 150);
+    },
 
+    updateScene: function () {
+      var i, item,
+          intensity = this.getIntensity();
+
+      for (i = 0; i < intensity; i++) {
+        item = this.drawItem();
+        item.create();
+        item.addEventListener('item:remove', this.removeItem.bind(this));
+        item.animate();
+        this.getScene().addChild(item.getDisplayObject());
+      }
+
+      //console.log(this.getScene().getNumChildren());
+    },
+
+    drawItem: function () {},
+
+
+    removeItem: function (e) {
+      //console.log('remove!');
+      //console.log(e);
+      this.getScene().removeChild(e.target.getDisplayObject());
     },
 
     setScene: function (v) {
@@ -344,19 +432,38 @@
     },
     getScene: function () {
       return this.scene;
+    },
+
+    setIntensity: function (v) {
+      this.intensity = v;
+    },
+    getIntensity: function () {
+      return this.intensity;
     }
   });
 
-  rodeo.views.conditions.Raining = function () {};
+  rodeo.views.conditions.Raining = function () {
+    this.setIntensity(12);
+  };
   rodeo.views.conditions.Raining.prototype = new rodeo.views.conditions.BaseCondition();
   $.extend(rodeo.views.conditions.Raining.prototype, {
 
-    makeItRain: function () {
-
+    drawItem: function () {
+      return new rodeo.views.RainDrop();
     }
   });
 
-    
+  rodeo.views.conditions.Snowing = function () {
+    this.setIntensity(8);
+  };
+  rodeo.views.conditions.Snowing.prototype = new rodeo.views.conditions.BaseCondition();
+  $.extend(rodeo.views.conditions.Snowing.prototype, {
+
+    drawItem: function () {
+      return new rodeo.views.SnowFlake();
+    }
+  });
+
 
 
   //-------------------------
@@ -630,7 +737,7 @@
         drop.graphics.beginStroke('rgba(0,0,255,0.5)').beginFill('rgba(0,0,255,0.25)');
         drop.graphics.moveTo(0, 0).lineTo(-t, m).quadraticCurveTo(-m, s, 0, s)
                      .moveTo(0,0).lineTo(t, m).quadraticCurveTo(m, s, 0,s);
-
+        
         return drop;
       }
     }

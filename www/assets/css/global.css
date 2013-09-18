@@ -8,4 +8,20 @@ body {
 canvas {
   margin:0;
   padding:0;
+  width:900px;
+  height:600px;
+}
+#fps {
+  position: absolute;
+  top:0;
+  right:0;
+  width:40px;
+  background: red;
+}
+#items {
+  position: absolute;
+  top:40px;
+  right:0;
+  width:40px;
+  background: red;
 }
