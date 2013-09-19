@@ -47,16 +47,19 @@
        */
       var stage, stageWidth = 900, stageHeight = 600,
           sky,
-          condition, $fps,
+          currentCondition = null,
+          $fps,
           ticker,
           CANVAS = 'app',
+          DEFAULT_CONDITION = 'raining',
+          DEFAULT_DAY_PHASE = 'daytime',
           $canvas = $('#'+CANVAS);
 
 
 
       //adds global listeners used by the site
       var addListeners = function() {
-          //$(window).on('resize', _.bind( onResize, this) );
+          $(window).on('resize', _.bind( onResize, this) );
         }, //end: addListeners
 
         setStage = function () {
@@ -74,17 +77,27 @@
           $fps.html(Number(ticker.getMeasuredFPS()) + " fps");
           //rodeo.views.conditions.updateFallingItems();
         },
-
-        createSky = function () {
-          sky = new rodeo.views.Sky();
-          sky.setupDisplay();
-          stage.addChild(sky.getScene());
+        createCondition = function (conditionType) {
+          conditionType = (conditionType === undefined) ? DEFAULT_CONDITION : conditionType;
+          
+          createWeather(conditionType);
         },
 
-        createCondition = function () {
-          condition = new rodeo.views.conditions.Raining();//rodeo.views.conditions.Snowing();
-          condition.create();
+        createWeather = function (conditionType) {
+          switch (conditionType) {
+            case 'raining':
+              condition = new rodeo.views.conditions.Raining();
+              break;
+            case 'snowing':
+              condition = new rodeo.views.conditions.Snowing();
+              break;
+            default: //sunny
+              condition = new rodeo.views.condition.BaseCondition();
+          }
+          condition.create(DEFAULT_DAY_PHASE);
           stage.addChild(condition.getScene());
+
+          currentCondition = condition;
         },
 
         onResize = function () {
@@ -94,9 +107,12 @@
           
           stageWidth = $.$body.width();
           stageHeight = $.$body.height();
-          stage.update();
+          
+          if (currentCondition !== null) {
+            currentCondition.resize();
+          }
 
-          console.log('resize');
+          stage.update();
         }; //end: on_resize
 
         /**
@@ -111,12 +127,9 @@
             addListeners();
 
             //do an initial resize call to set stage props
-            //onResize();
-            $canvas.attr('width', $canvas.width());
-            $canvas.attr('height', $canvas.height());
-
-            //create sky
-            createSky();
+            onResize();
+            //$canvas.attr('width', $canvas.width());
+            //$canvas.attr('height', $canvas.height());
 
             //start the weather...
             createCondition();
@@ -175,25 +188,43 @@
   //
   //-------------------------
   rodeo.views = {};
+
+  //SKY SCENE
   rodeo.views.Sky = function () {};
   $.extend(rodeo.views.Sky.prototype, {
+    el: null,
     current : null,
     next : null,
+    dayPhase: 'daytime',
+    conditionType: 'sunny',
 
-    setupDisplay: function () {
-      this.current = this.createDaytime();
-      return this.current;
+    create: function (condition, dayPhase) {
+      this.el = new createjs.MovieClip();
+
+      this.setCondition(condition);
+      this.setDayPhase(dayPhase);
+
+      if (this.getDayPhase() === 'daytime') {
+        this.current = new createjs.Shape();
+        this.createDaytime(this.current);
+      } else {
+        this.current = new createjs.Shape();
+        this.createDaytime(this.current);
+      }
+
+      this.el.addChild(this.current);
     },
 
-    createDaytime: function () {
-      var sky = new createjs.Shape(),
+    createDaytime: function (container) {
+      var colors = this.getColors(this.getCondition()),
+          sky = container,
           stageWidth = rodeo.Main.getInstance().getStageWidth(),
           stageHeight = rodeo.Main.getInstance().getStageHeight();
-      sky.graphics.beginRadialGradientFill(['#ffcc00', '#ffe54c', '#ffff99', '#237acb'], 
+      sky.graphics.beginRadialGradientFill(colors, 
                                            [0, 0.1, 0.14, 1],
                                            stageWidth, 0, 0, stageWidth, 0, stageWidth*0.75)
                   .drawRect(0, 0, stageWidth, stageHeight);
-
+      sky.cache(0, 0, stageWidth, stageHeight);
       return sky;
     },
 
@@ -201,8 +232,93 @@
 
     },
 
+    getColors: function (condition) {
+      if (condition !== 'sunny') {
+          return ['#e79a66', '#ffb950', '#b7b5ba', '#7f8085'];
+      } else {
+          return ['#ffcc00', '#ffe54c', '#ffff99', '#237acb'];
+      }
+    },
+
+
+    setCondition: function (v) {
+      this.conditionType = v;
+    },
+    getCondition: function () {
+      return this.conditionType;
+    },
+
+    setDayPhase: function (v) {
+      this.dayPhase = v;
+    },
+    getDayPhase: function () {
+      return this.dayPhase;
+    },
+
+    resize: function () {
+      if (this.current !== null) {
+        this.current.graphics.clear();
+
+        if (this.getDayPhase() === 'daytime') {
+          this.createDaytime(this.current);
+        } else {
+          this.createDaytime(this.current);
+        }
+
+        this.current.updateCache();
+      }
+    },
+
     getScene: function () {
-      return this.current;
+      return this.el;
+    }
+  });
+
+  //CLOUDS SCENE
+  rodeo.views.Clouds = function () {};
+  $.extend(rodeo.views.Clouds.prototype, {
+    el: null,
+    intensity : 1,
+
+    create: function (condition) {
+      this.el = new createjs.MovieClip();
+
+      this.setCondition(condition);      
+      this.el.addChild(this.current);
+    },
+
+    update: function () {
+
+    },
+
+    setCondition: function (v) {
+      this.conditionType = v;
+      switch(this.conditionType) {
+        case 'snowing':
+        case 'raining':
+          this.setIntensity(5);
+          break;
+        default:
+          this.setIntensity(1);
+      }
+    },
+    getCondition: function () {
+      return this.conditionType;
+    },
+
+    setIntensity: function (v) {
+      this.intensity = v;
+    },
+    getIntensity: function() {
+      return this.intensity;
+    },
+
+    resize: function () {
+      //update clouds tween
+    },
+
+    getScene: function () {
+      return this.el;
     }
   });
 
@@ -210,7 +326,7 @@
   createjs.EventDispatcher.initialize(rodeo.views.BaseAnimatedElement.prototype);
   rodeo.views.BaseAnimatedElement.prototype._super = rodeo.views.BaseAnimatedElement.prototype;
   $.extend(rodeo.views.BaseAnimatedElement.prototype, {
-    el: 0,
+    el: null,
     speed: 0,
     width: 0,
     minSize: 0,
@@ -307,6 +423,7 @@
   };
   rodeo.views.SnowFlake.prototype = new rodeo.views.BaseAnimatedElement();
   $.extend(rodeo.views.SnowFlake.prototype, {
+
     draw: function () {
       var flake,
           s = Math.random()*this.getMaxSize()+this.getMinSize();
@@ -337,7 +454,7 @@
           t = s/3;
       this.setWidth(s);
       
-      drop.graphics.beginStroke('rgba(0,0,255,0.5)').beginFill('rgba(0,0,255,0.25)');
+      drop.graphics.beginStroke('rgba(76,240,255,0.5)').beginFill('rgba(132,184,255,0.25)');
       drop.graphics.moveTo(0, 0).lineTo(-t, m).quadraticCurveTo(-m, s, 0, s)
                    .moveTo(0,0).lineTo(t, m).quadraticCurveTo(m, s, 0,s);
       drop.cache(-s, -s, s*2, s*2);
@@ -392,11 +509,17 @@
     scene: null,
     intensity: 0,
     wind: 0,
+    conditionType: 'sunny',
+    dayPhase: 'daytime',
+    sky: null,
 
-    create: function () {
+    create: function (dayPhase) {
       var scene = new createjs.MovieClip();
       this.setScene(scene);
       this.setupAnimation();
+
+      this.setDayPhase(dayPhase);
+      this.createSky();
     },
 
     setupAnimation: function() {
@@ -418,8 +541,25 @@
       //console.log(this.getScene().getNumChildren());
     },
 
-    drawItem: function () {},
+    createSky: function () {
+      this.sky = new rodeo.views.Sky();
+      this.sky.create(this.getCondition(), this.getDayPhase());
+      this.getScene().addChild(this.sky.getScene());
+    },
 
+    createClouds: function () {
+      this.clouds = new rodeo.views.Clouds();
+      this.clouds.create(this.getCondition());
+      this.getScene().addChild(this.clouds.getScene());
+    }
+
+    resize: function () {
+      if (this.sky !== null) {
+        this.sky.resize();
+      }
+    },
+
+    drawItem: function () {},
 
     removeItem: function (e) {
       //console.log('remove!');
@@ -439,15 +579,34 @@
     },
     getIntensity: function () {
       return this.intensity;
+    },
+
+    setCondition: function (v) {
+      this.conditionType = v;
+    },
+    getCondition: function () {
+      return this.conditionType;
+    },
+
+    setDayPhase: function (v) {
+      if (this.sky !== null) {
+        this.sky.setDayPhase(v);
+      }
+      this.dayPhase = v;
+    },
+    getDayPhase: function () {
+      return this.dayPhase;
     }
+
   });
 
   rodeo.views.conditions.Raining = function () {
-    this.setIntensity(12);
+    this.setIntensity(6);
+    this.setCondition('raining');
   };
   rodeo.views.conditions.Raining.prototype = new rodeo.views.conditions.BaseCondition();
   $.extend(rodeo.views.conditions.Raining.prototype, {
-
+    
     drawItem: function () {
       return new rodeo.views.RainDrop();
     }
@@ -455,10 +614,11 @@
 
   rodeo.views.conditions.Snowing = function () {
     this.setIntensity(8);
+    this.setCondition('snowing');
   };
   rodeo.views.conditions.Snowing.prototype = new rodeo.views.conditions.BaseCondition();
   $.extend(rodeo.views.conditions.Snowing.prototype, {
-
+    
     drawItem: function () {
       return new rodeo.views.SnowFlake();
     }
@@ -737,7 +897,7 @@
         drop.graphics.beginStroke('rgba(0,0,255,0.5)').beginFill('rgba(0,0,255,0.25)');
         drop.graphics.moveTo(0, 0).lineTo(-t, m).quadraticCurveTo(-m, s, 0, s)
                      .moveTo(0,0).lineTo(t, m).quadraticCurveTo(m, s, 0,s);
-        
+        this.drop.cache(-s, -s, s*2, s*2);
         return drop;
       }
     }

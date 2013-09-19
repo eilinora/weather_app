@@ -3,13 +3,12 @@ body {
   padding:0;
   width:100%;
   height:100%;
-  min-width:768px;
 }
 canvas {
   margin:0;
   padding:0;
-  width:900px;
-  height:600px;
+  width:100%;
+  height:100%;
 }
 #fps {
   position: absolute;
