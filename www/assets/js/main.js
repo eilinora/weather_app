@@ -234,7 +234,7 @@
 
     getColors: function (condition) {
       if (condition !== 'sunny') {
-          return ['#e79a66', '#ffb950', '#b7b5ba', '#7f8085'];
+          return ['#e79a66', '#ffb950', '#b7b5ba', '#cadaef'];
       } else {
           return ['#ffcc00', '#ffe54c', '#ffff99', '#237acb'];
       }
@@ -520,6 +520,7 @@
 
       this.setDayPhase(dayPhase);
       this.createSky();
+      this.createClouds();
     },
 
     setupAnimation: function() {
@@ -551,7 +552,7 @@
       this.clouds = new rodeo.views.Clouds();
       this.clouds.create(this.getCondition());
       this.getScene().addChild(this.clouds.getScene());
-    }
+    },
 
     resize: function () {
       if (this.sky !== null) {
