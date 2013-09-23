@@ -1,0 +1,32 @@
+Rodeo 1
+
+Create an animation using the canvas element.
+
+Rules
+- All animation should be within the canvas element only
+- Using 3rd party JavaScript libraries are okay
+- Work should be original, please don't just follow a tutorial with minor edits
+- Have FUN!
+
+Judging Criteria
+- HTML5 document is clean and symanticly valid
+- JavaScript is clean and easy to read.  Tip: Code for the reader.
+- Code is commented where appropriate. Tip: Explain the WHY not the HOW.
+- Readable code is preferred over commented code. Tip: Use easy to understand naming conventions.
+- Creativity
+- Originality
+- User Experience
+
+How to Submit
+- In the rodeo-1 folder create a new folder with your username
+- Commit all your work to your subfolder
+- When reviewing the submissions someone will download a zip of the repo and rename the username folders to something random so the judges don't know which submission is whos.
+ 
+Dates
+7-17-2013 - Rodeo begins, start coding
+8-12-2013 - All submissions due by 9:00am.
+8-12-2013 - Submissions judged between 9:00am - 6:00pm
+8-13-2013 - Submissions presented at Tech/QA meeting
+
+
+
