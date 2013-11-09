@@ -155,11 +155,11 @@
             currentCondition.resize();
           }
 
-          if (sky !== null) {
+          if (sky) {
             sky.resize();
           }
 
-          if (city !== null) {
+          if (city) {
             city.resize();
           }
 
@@ -338,7 +338,7 @@
   rodeo.views.City = function () {};
   $.extend(rodeo.views.City.prototype, {
     el: null,
-    sceneHeight: 118;
+    sceneHeight: 118,
 
     create: function (condition, dayPhase) {
       this.el = new createjs.Bitmap('assets/images/city.png');
@@ -490,7 +490,7 @@
           t = s/3;
       this.setWidth(s);
       
-      drop.graphics.beginStroke('rgba(76,240,255,0.5)').beginFill('rgba(132,184,255,0.25)');
+      drop.graphics.beginStroke('rgba(255,240,255,0.5)').beginFill('rgba(255,255,255,0.25)');
       drop.graphics.moveTo(0, 0).lineTo(-t, m).quadraticCurveTo(-m, s, 0, s)
                    .moveTo(0,0).lineTo(t, m).quadraticCurveTo(m, s, 0,s);
       drop.cache(-s, -s, s*2, s*2);
