@@ -46,7 +46,7 @@
        * reference to the canvas stage
        */
       var stage, stageWidth = 900, stageHeight = 600,
-          sky, clouds, txt,
+          sky, city, clouds, txt,
           currentCondition = null,
           $fps,
           ticker,
@@ -110,9 +110,9 @@
         },
 
         createCity = function () {
-          var city = new createjs.Bitmap('/assets/images/city.png');
-          city.y = stageHeight - 118;
-          stage.addChild(city);
+          city = new rodeo.views.City();
+          city.create();
+          stage.addChild(city.getScene());
         },
 
         createClouds = function(conditionType) {
@@ -155,8 +155,12 @@
             currentCondition.resize();
           }
 
-          if (sky != null) {
+          if (sky !== null) {
             sky.resize();
+          }
+
+          if (city !== null) {
+            city.resize();
           }
 
           stage.update();
@@ -331,6 +335,27 @@
     }
   });
 
+  rodeo.views.City = function () {};
+  $.extend(rodeo.views.City.prototype, {
+    el: null,
+    sceneHeight: 118;
+
+    create: function (condition, dayPhase) {
+      this.el = new createjs.Bitmap('assets/images/city.png');
+      
+      this.resize();
+    },
+
+    resize: function () {
+      this.el.y = rodeo.Main.getInstance().getStageHeight() - this.sceneHeight;
+    },
+
+    getScene: function () {
+      return this.el;
+    }
+
+  });
+
   
 
   rodeo.views.BaseAnimatedElement = function () {};
@@ -491,7 +516,7 @@
     },
 
     draw: function () {
-      var cloud = new createjs.Bitmap('/assets/images/clouds.png');
+      var cloud = new createjs.Bitmap('assets/images/clouds.png');
       //cloud.cache(0, 0, 300, 100);
 
       return cloud;
@@ -905,34 +930,6 @@
     Temp: {
       convert_kelvin_to_fahrenheit: function (temp) {
         return ((temp - 273) * 1.8 ) + 32;
-      }
-    },
-
-    Draw: {
-      
-
-      snowFlake: function (s) {
-        if (this.flake === undefined) {
-          s = 16;
-          this.flake = new createjs.Shape();
-          this.flake.graphics.beginStroke('white').beginFill('rgba(255,255,255,0.75)');
-          this.flake.graphics.drawPolyStar(0, 0, s, 8, 0.65, -100);
-          this.flake.cache(-s, -s, s*2, s*2);
-        }
-
-        return this.flake.clone();
-      },
-
-      rainDrop: function (s) {
-        var drop = new createjs.Shape(),
-            m = s/2,
-            t = s/3;
-
-        drop.graphics.beginStroke('rgba(0,0,255,0.5)').beginFill('rgba(0,0,255,0.25)');
-        drop.graphics.moveTo(0, 0).lineTo(-t, m).quadraticCurveTo(-m, s, 0, s)
-                     .moveTo(0,0).lineTo(t, m).quadraticCurveTo(m, s, 0,s);
-        this.drop.cache(-s, -s, s*2, s*2);
-        return drop;
       }
     }
   };
