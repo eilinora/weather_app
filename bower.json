@@ -1,0 +1,19 @@
+{
+  "name": "WeatherApp",
+  "version": "0.1.0",
+  "cwd" : ".",
+  "directory": "libraries",
+  "dependencies": {
+    "jquery": "1.10.2",
+    "underscore": "~1.5.1",
+    "easeljs": "*",
+    "greensock-js": "~1.10.2"
+  },
+  "exportsOverride": {
+    "*": {
+      "js": "**/*.min.js",
+      "css": "**/*.css"
+    }
+  },
+  "devDependencies": {}
+}

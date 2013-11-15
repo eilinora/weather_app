@@ -36,6 +36,8 @@ dwsync.xml
 .CVS
 intermediate
 publish
+node_modules
+libraries
 .idea
  
 # build script local files
